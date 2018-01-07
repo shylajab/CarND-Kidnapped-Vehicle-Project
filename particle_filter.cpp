@@ -60,15 +60,20 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
        xf = 0; yf = 0; thetaf = 0;
 
        for (int i = 0; i < num_particles; i++) {
-            if (fabs(yaw_rate) > 0.00001) {
+            if (yaw_rate != 0) {
+                /*
                 thetaf = particles[i].theta + (yaw_rate * delta_t);
                 sin_value = sin(thetaf) - sin(particles[i].theta);
                 cos_value = cos(thetaf) - cos(particles[i].theta);
 
                 xf = particles[i].x + ((velocity/(yaw_rate)) *  sin_value);
                 yf = particles[i].y + ((velocity/(yaw_rate)) *  cos_value);
-            }
-            else {
+                */
+                xf = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
+                yf = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
+                thetaf =  particles[i].theta+yaw_rate*delta_t;
+                }
+              else {
                 thetaf = particles[i].theta;
                 xf = particles[i].x + (velocity * delta_t * cos(thetaf));
                 yf = particles[i].y + ((velocity * delta_t * sin(thetaf)));
@@ -150,12 +155,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		       near_landm.x = map_landmarks.landmark_list[k].x_f;
 		       near_landm.id = map_landmarks.landmark_list[k].id_i;
                        min_dist = dist_calc;
-                       cout << " Inside Update near.x " << near_landm.x  << " near.y " << near_landm.y << " k " << k << " min_dist " << min_dist << endl;
+                       // cout << " Inside Update near.x " << near_landm.x  << " near.y " << near_landm.y << " k " << k << " min_dist " << min_dist << endl;
                     }
                 }
             }
 
-           cout << " Update near.x " << near_landm.x  << " near.y " << near_landm.y << " k " << " min_dist " << min_dist << endl;
+           // cout << " Update near.x " << near_landm.x  << " near.y " << near_landm.y << " k " << " min_dist " << min_dist << endl;
            // calculating error and 
            // # calculate normalization term
 
@@ -165,22 +170,16 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
           double exponent= ((x_obs_mu * x_obs_mu)/(2.0 * stdl_0)) + ((y_obs_mu * y_obs_mu)/(2 * stdl_1));
 
           // # calculate weight using normalization terms and exponent
-          wgt_prod= gauss_norm * exp(-exponent); 
+          updt_weights *=  gauss_norm * exp(-exponent); 
+          /*
           cout << " Update x_map " << x_map  << " y_map " << y_map << " j " << j << " i " << i << endl;
           cout << " Update near.x " << near_landm.x  << " near.y " << near_landm.y << endl;
           cout << " Update _wgt  wgt_prod " << wgt_prod  << " )" << endl;
-          updt_weights *= wgt_prod; 
-          if (updt_weights == 0.0) {
-
-              cout << " Update _wgt == 0 x_obs_mu " << x_obs_mu  << " )" << endl;
-              cout << " Update _wgt == 0 y_obs_mu " << y_obs_mu <<  " )" << endl;
-              cout << " Update _wgt == 0 exponent " << exponent <<  " )" << endl;
-              cout << " Update _wgt == 0 gauss_nr " << gauss_norm << " )" << endl;
-
-          } 
+          */
+          // updt_weights *= wgt_prod; 
         }
         particles[i].weight = updt_weights;
-        weights.push_back(particles[i].weight);
+        weights.push_back(updt_weights);
         // cout << " Update " << particles[i].weight << " )" << endl;
         
     }
@@ -198,13 +197,11 @@ void ParticleFilter::resample() {
 
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::discrete_distribution<int> d(weights.begin(), weights.end());
+        std::discrete_distribution<> d(weights.begin(), weights.end());
 
         for(int n=0; n<num_particles; ++n) {
-            // Particle particle_res = particles[d(gen)];
-            // particles_new.push_back(particle_res);
-            index = d(gen);
-            particles_new.push_back(particles[index]);
+            Particle particle_res = particles[d(gen)];
+            particles_new.push_back(particle_res);
         }
 
 
